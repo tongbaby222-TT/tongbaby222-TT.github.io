@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TT今天吃什么？转盘</title>
+  <style>
+    :root{
+      /* 主题切换为蓝白 */
+      --primary:#2563eb;   /* 蓝 */
+      --secondary:#22d3ee; /* 青 */
+      --accent:#60a5fa;    /* 浅蓝 */
+      --bg1:#e0f2ff;       /* 冰蓝背景1 */
+      --bg2:#eef2ff;       /* 冰蓝背景2 */
+      --card:#ffffff;
+      --text:#0f172a;
+      --muted:#64748b;
+    }
+    html,body{height:100%;}
+    body{
+      margin:0;
+      font-family: ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"Apple Color Emoji","Segoe UI Emoji";
+      color:var(--text);
+      /* 柔和蓝白背景 */
+      background: radial-gradient(1000px 600px at 10% 10%, #ffffff 0%, var(--bg2) 40%, var(--bg1) 80%) fixed;
+    }
+    .app-wrap{max-width:960px;margin:0 auto;padding:24px;}
+    .card{
+      background:rgba(255,255,255,.9);
+      border:1px solid rgba(2,6,23,.08);
+      border-radius:16px;
+      box-shadow:0 10px 30px rgba(2,6,23,.08);
+      backdrop-filter:saturate(1.08) blur(6px);
+      padding:28px;
+    }
+    .title{
+      font-weight:800; font-size:clamp(22px,3.2vw,34px); margin:0 0 6px;
+      background:linear-gradient(90deg,var(--primary),var(--accent));
+      -webkit-background-clip:text; background-clip:text; color:transparent;
+    }
+    .subtitle{color:var(--muted); margin:0 0 18px; font-size:14px;}
+
+    /* 视窗外框：冷色金属蓝 + 细腻内发光 */
+    .hs-area{display:flex;flex-direction:column;align-items:center;gap:14px;}
+    .hs-viewport{
+      position:relative;width:min(480px,92vw);height:260px;margin-top:6px;overflow:hidden;border-radius:14px;
+      background:linear-gradient(180deg,#ffffff 0%, #f1f5f9 100%);
+      border:6px solid #1e3a8a; /* indigo-800 */
+      box-shadow:
+        inset 0 0 0 2px rgba(147,197,253,.35), /* 内蓝色描边 */
+        0 10px 24px rgba(2,6,23,.18);         /* 外投影 */
+    }
+
+    .hs-reel{position:absolute;left:0;right:0;top:0;will-change:transform;}
+
+    /* 条目：蓝色渐变面板 */
+    .hs-item{
+      height:44px;margin:6px 16px;border-radius:8px;color:#fff;display:flex;align-items:center;justify-content:center;
+      font-weight:800;letter-spacing:.5px; line-height:44px; /* 确保文字垂直居中 */
+      background:linear-gradient(180deg,#3b82f6 0%, #1e40af 100%); /* 蓝渐变 */
+      border-top:2px solid rgba(255,255,255,.35);
+      border-bottom:2px solid rgba(15,23,42,.35);
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.22),
+        0 4px 10px rgba(2,6,23,.12);
+      text-shadow:0 1px 0 rgba(0,0,0,.25);
+    }
+
+    /* 高亮条：冰蓝半透明+白色高光边，使用 border-box 避免溢出 */
+    .hs-highlight{
+      position:absolute;left:0;right:0;top:50%;height:56px;transform:translateY(-50%);pointer-events:none;
+      background:linear-gradient(to bottom, rgba(147,197,253,.18), rgba(147,197,253,.18));
+      border-top:3px solid rgba(255,255,255,.9);
+      border-bottom:3px solid rgba(255,255,255,.9);
+      box-shadow:inset 0 0 0 2px rgba(147,197,253,.45), 0 0 0 4px rgba(15,23,42,.06);
+      box-sizing:border-box;
+      border-radius:10px;
+    }
+
+    /* 箭头：浅蓝 */
+    .hs-arrow{position:absolute;top:50%;width:0;height:0;filter:drop-shadow(0 2px 2px rgba(2,6,23,.25));}
+    .hs-arrow.left{
+      left:8px;transform:translateY(-50%);
+      border-top:14px solid transparent;border-bottom:14px solid transparent;border-right:22px solid #93c5fd; /* sky-300 */
+    }
+    .hs-arrow.right{
+      right:8px;transform:translateY(-50%);
+      border-top:14px solid transparent;border-bottom:14px solid transparent;border-left:22px solid #93c5fd;
+    }
+
+    /* 渐隐层保留默认关闭（只显示一项） */
+    .hs-gradient.top,.hs-gradient.bottom{position:absolute;left:0;right:0;height:64px;pointer-events:none;}
+    .hs-gradient.top{top:0;background:linear-gradient(to bottom, rgba(241,245,249,.9), rgba(241,245,249,0));}
+    .hs-gradient.bottom{bottom:0;background:linear-gradient(to top, rgba(241,245,249,.9), rgba(241,245,249,0));}
+
+    #confetti-canvas{position:absolute;inset:0;pointer-events:none;}
+    .pointer{
+      position:absolute; left:50%; transform:translateX(-50%);
+      top:-14px; width:0;height:0;
+      border-left:12px solid transparent;border-right:12px solid transparent;border-bottom:18px solid #ef4444;
+      filter:drop-shadow(0 2px 2px rgba(0,0,0,.25));
+    }
+    .hub{
+      position:absolute;inset:auto 50% 50% auto; transform:translate(50%,50%);
+      width:64px;height:64px;border-radius:50%;
+      background:#fff;border:4px solid #111827; box-shadow:0 4px 10px rgba(0,0,0,.15);
+    }
+    .result{font-weight:800;font-size:22px;color:var(--primary);min-height:28px;}
+    .btn{
+      cursor:pointer; border:0; padding:10px 18px; border-radius:10px;
+      color:#fff; background:linear-gradient(135deg,var(--primary),#2563eb);
+      box-shadow:0 8px 18px rgba(37,99,235,.25);
+      transition:transform .15s ease, box-shadow .15s ease, filter .2s ease;
+    }
+    .btn:hover{transform:translateY(-1px); box-shadow:0 12px 26px rgba(37,99,235,.32);}
+    .btn:disabled{opacity:.6; cursor:not-allowed; filter:saturate(.6);}
+    .note{color:var(--muted); font-size:12px;}
+    /* 只显示一个选项：将视窗高度限制为一条条目，隐藏上下渐隐 */
+    .hs-viewport{ height:60px; }       /* 先给接近真实行高的初值，JS 会再精确覆盖 */
+    .hs-highlight{ height:48px; }      /* 条目本体为 44 + 上下边框 2+2 = 48，居中更准确 */
+    .hs-gradient.top, .hs-gradient.bottom{ display:none; }
+  </style>
+</head>
+<body class="font-inter bg-gray-50 text-dark">
+  <main class="app-wrap">
+    <section id="dish-picker" class="card">
+      <h3 class="title">TT今天吃什么？</h3>
+      <p class="subtitle">点击"开始抽取"，让转盘帮你做决定</p>
+      <div class="wheel-area">
+        <!-- 替换旧的转盘画布结构为纵向单选视窗 -->
+        <div class="hs-area">
+          <div class="hs-viewport" id="hs-viewport">
+            <div class="hs-reel" id="hs-reel"></div>
+            <div class="hs-highlight" id="hs-highlight">
+              <div class="hs-arrow left"></div>
+              <div class="hs-arrow right"></div>
+            </div>
+            <canvas id="confetti-canvas"></canvas>
+          </div>
+          <div id="dish-display" class="result">点击"开始抽取"</div>
+          <button id="spin-button" class="btn">开始抽取</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    window.addEventListener('load', () => {
+      const spinBtn = document.getElementById('spin-button');
+      const dishDisplay = document.getElementById('dish-display');
+      const viewport = document.getElementById('hs-viewport');
+      const reel = document.getElementById('hs-reel');
+      const highlight = document.getElementById('hs-highlight');
+      const confettiCanvas = document.getElementById('confetti-canvas');
+      const cctx = confettiCanvas.getContext('2d');
+
+      // 可自由增删，支持任意数量
+      const items = [
+        '宫保鸡丁','红烧肉','鱼香肉丝','番茄炒蛋','麻婆豆腐','水煮鱼','辣子鸡','回锅肉','青椒肉丝',
+        '干锅花菜','西红柿牛腩','葱爆羊肉','清蒸鲈鱼','剁椒鱼头','黄焖鸡米饭','重庆小面','兰州拉面',
+        '牛肉炒饭','炒河粉','酸菜鱼','烤鸡翅','凉皮','饺子','馄饨','披萨','汉堡','寿司','石锅拌饭','沙拉',
+        '火锅','烧烤','麻辣烫','冒菜','烤鱼','烤肉拌饭','炸酱面','热干面','担担面','肠粉','煲仔饭','螺蛳粉'
+      ];
+      const palette = ['#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8','#38bdf8','#22d3ee','#a5b4fc']; // 蓝白主题
+
+      const REPEAT = 30;       // 为实现"无限"滚动的重复倍数
+      let stepH = 60;          // 实际步进高度（相邻两项 top 差）
+      let itemBoxH = 48;       // 元素本体高度（含边框，不含 margin）
+      let centerOffset = 0;
+
+      // 统一变量命名
+      let currentIndex = 0;             // 当前位置，单位：条目（可为小数）
+      let spinning = false;             // 转盘是否正在旋转
+      let rafId = null;                 // requestAnimationFrame 句柄
+      const runSpeedItemsPerSec = 18;   // 连续滚动速度（条目/秒）
+      
+      // 新增变量用于控制转动状态
+      let isSpinning = false;           // 是否正在转动
+      let spinSpeed = 0;                // 当前转动速度
+      let targetSpeed = 0;              // 目标速度
+      let spinDirection = 1;            // 转动方向 (1: 向下, -1: 向上)
+      let lastSpinTime = 0;             // 上次转动时间
+
+      function fitCanvas() {
+        const rect = viewport.getBoundingClientRect();
+        const dpr = Math.max(1, window.devicePixelRatio || 1);
+        confettiCanvas.width = Math.floor(rect.width * dpr);
+        confettiCanvas.height = Math.floor(rect.height * dpr);
+        cctx.setTransform(dpr,0,0,dpr,0,0);
+      }
+
+      function setTranslate(y){
+        // 去掉 Math.round，保留亚像素位置，避免被强行压向下边
+        reel.style.transform = `translateY(${y}px)`;
+      }
+
+      function measureHeights() {
+        const first = reel.children[0];
+        const second = reel.children[1];
+        if (first) {
+          itemBoxH = first.offsetHeight+10; // 48（44 内容 + 上下边框 2+2）
+          if (second) {
+            // 使用真实测量值，不取整，避免 0.5px 误差
+            const r0 = first.getBoundingClientRect();
+            const r1 = second.getBoundingClientRect();
+            stepH = (r1.top - r0.top);
+          } else {
+            stepH = itemBoxH;
+          }
+          // 视窗显示"一步"的完整高度；高亮条外部高度与视窗一致（因 border-box 不会溢出）
+          viewport.style.height = stepH + 'px';
+          highlight.style.height = stepH + 'px';
+
+          // 居中偏移 = (视窗 - 条目本体)/2，保证红色条几何中心与高亮中心一致
+          centerOffset = (stepH - itemBoxH) / 2;
+        }
+      }
+
+      function buildReel() {
+        reel.innerHTML = '';
+        for (let n = 0; n < REPEAT; n++) {
+          for (let i = 0; i < items.length; i++) {
+            const el = document.createElement('div');
+            el.className = 'hs-item';
+            el.textContent = items[i];
+            reel.appendChild(el);
+          }
+        }
+        // 让浏览器完成布局后再测量，避免初次插入时的数据不稳定
+        requestAnimationFrame(() => {
+          measureHeights();
+          const mid = Math.floor((REPEAT * items.length) / 2);
+          currentIndex = mid; // 从中部起步
+          setTranslate(-(currentIndex * stepH - centerOffset));
+        });
+      }
+
+      function easeOutCubic(t){ return 1 - Math.pow(1 - t, 3); }
+
+      // 在 DOM 中根据"视窗中心线"解析当前真正居中的元素索引
+      function resolveCenterIndexFromDOM() {
+        const centerY = viewport.getBoundingClientRect().top + viewport.clientHeight / 2;
+        const base = Math.round(currentIndex);
+        let bestIdx = base;
+        let bestDist = Infinity;
+        for (let i = base - 3; i <= base + 3; i++) {
+          const el = reel.children[i];
+          if (!el) continue;
+          const r = el.getBoundingClientRect();
+          const mid = (r.top + r.bottom) / 2;
+          const d = Math.abs(mid - centerY);
+          if (d < bestDist) { bestDist = d; bestIdx = i; }
+        }
+        return bestIdx;
+      }
+
+      // 新的转动逻辑：连续转动
+      function startSpinning() {
+        if (isSpinning) return;
+        
+        isSpinning = true;
+        spinning = true;
+        spinBtn.disabled = false;
+        spinBtn.textContent = '停止转动';
+        
+        // 设置初始速度
+        spinSpeed = 15; // 初始速度：15 条目/秒
+        targetSpeed = spinSpeed;
+        spinDirection = 1;
+        lastSpinTime = performance.now();
+        
+        // 开始转动动画
+        animateSpin();
+      }
+
+      // 停止转动：逐渐减速
+      function stopSpinning() {
+        if (!isSpinning) return;
+        
+        // 逐渐减速到停止
+        targetSpeed = 0;
+        spinBtn.textContent = '减速中...';
+        spinBtn.disabled = true;
+        
+        // 减速动画会在 animateSpin 中处理
+      }
+
+      // 转动动画循环
+      function animateSpin() {
+        if (!isSpinning) return;
+        
+        const now = performance.now();
+        const deltaTime = (now - lastSpinTime) / 1000; // 转换为秒
+        lastSpinTime = now;
+        
+        // 更新位置
+        currentIndex += spinSpeed * deltaTime * spinDirection;
+        
+        // 处理边界循环
+        if (currentIndex >= REPEAT * items.length) {
+          currentIndex = 0;
+        } else if (currentIndex < 0) {
+          currentIndex = REPEAT * items.length - 1;
+        }
+        
+        // 应用位置
+        setTranslate(-(currentIndex * stepH - centerOffset));
+        
+        // 处理减速逻辑
+        if (targetSpeed === 0 && spinSpeed > 0) {
+          // 逐渐减速
+          spinSpeed = Math.max(0, spinSpeed - 8 * deltaTime); // 减速率：8 条目/秒²
+          
+          if (spinSpeed <= 0.1) {
+            // 完全停止
+            spinSpeed = 0;
+            isSpinning = false;
+            spinning = false;
+            
+            // 对齐到最近的条目
+            const finalIndex = Math.round(currentIndex);
+            currentIndex = finalIndex;
+            setTranslate(-(currentIndex * stepH - centerOffset));
+            
+            // 显示结果
+            const centerEl = reel.children[currentIndex];
+            if (centerEl) {
+              const resultText = centerEl.textContent;
+              dishDisplay.textContent = `今日推荐：${resultText}`;
+              fireConfetti();
+            }
+            
+            // 重置按钮状态
+            spinBtn.textContent = '开始抽取';
+            spinBtn.disabled = false;
+            return;
+          }
+        }
+        
+        // 继续动画
+        rafId = requestAnimationFrame(animateSpin);
+      }
+
+      // 按钮点击处理
+      function toggleSpin() {
+        if (isSpinning) {
+          stopSpinning();
+        } else {
+          startSpinning();
+        }
+      }
+
+      function fireConfetti(){
+        const rect = viewport.getBoundingClientRect();
+        cctx.clearRect(0,0,rect.width,rect.height);
+        const N = 120;
+        const parts = Array.from({length:N}).map(()=>({
+          x: rect.width/2, y: rect.height/2,
+          vx: (Math.random()-0.5)*6,
+          vy: (Math.random()-0.5)*6 - 3,
+          g: 0.1,
+          size: 4 + Math.random()*4,
+          rot: Math.random()*Math.PI*2,
+          vr: (Math.random()-0.5)*0.2,
+          color: palette[Math.floor(Math.random()*palette.length)]
+        }));
+        let t0=null; const dur=1500;
+        const tick = ts=>{
+          if(!t0) t0=ts;
+          const p=(ts-t0)/dur;
+          cctx.clearRect(0,0,rect.width,rect.height);
+          parts.forEach(pt=>{
+            pt.vy+=pt.g; pt.x+=pt.vx; pt.y+=pt.vy; pt.rot+=pt.vr;
+            cctx.save(); cctx.translate(pt.x,pt.y); cctx.rotate(pt.rot);
+            cctx.fillStyle=pt.color; cctx.globalAlpha=1-p;
+            cctx.fillRect(-pt.size/2,-pt.size/2,pt.size,pt.size);
+            cctx.restore();
+          });
+          if(p<1) requestAnimationFrame(tick);
+          else cctx.clearRect(0,0,rect.width,rect.height);
+        };
+        requestAnimationFrame(tick);
+      }
+
+      function onResize(){
+        fitCanvas();
+        const keepIndex = resolveCenterIndexFromDOM();
+        measureHeights();
+        currentIndex = keepIndex;
+        setTranslate(-(currentIndex * stepH - centerOffset));
+      }
+
+      // 初始化
+      buildReel();
+      fitCanvas();
+      window.addEventListener('resize', onResize);
+      spinBtn.addEventListener('click', toggleSpin);
+    });
+  </script>
+</body>
+</html>
