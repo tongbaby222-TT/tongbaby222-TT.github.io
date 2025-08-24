@@ -54,11 +54,9 @@
       margin-top: 6px;
       overflow: hidden;
       border-radius: 14px;
-      background: linear-gradient(180deg,#ffffff 0%, #f1f5f9 100%);
-      border: 6px solid #1e3a8a; /* indigo-800 */
-      box-shadow:
-        inset 0 0 0 2px rgba(147,197,253,.35), /* 内蓝色描边 */
-        0 10px 24px rgba(2,6,23,.18);         /* 外投影 */
+  background: #e0f2ff; /* 纯冰蓝背景，无渐变 */
+  border: 6px solid #1e3a8a; /* 单一蓝色边框 */
+  /* 移除 box-shadow 和多层透明效果 */
     }
 
     .hs-reel{position:absolute;left:0;right:0;top:0;will-change:transform;}
@@ -82,10 +80,10 @@
     /* 高亮条：冰蓝半透明+白色高光边，使用 border-box 避免溢出 */
     .hs-highlight{
       position:absolute;left:0;right:0;top:50%;height:56px;transform:translateY(-50%);pointer-events:none;
-      background:linear-gradient(to bottom, rgba(147,197,253,.18), rgba(147,197,253,.18));
-      border-top:3px solid rgba(255,255,255,.9);
-      border-bottom:3px solid rgba(255,255,255,.9);
-      box-shadow:inset 0 0 0 2px rgba(147,197,253,.45), 0 0 0 4px rgba(15,23,42,.06);
+  background:none;
+  border-top:3px solid #fff;
+  border-bottom:3px solid #fff;
+  box-shadow:none;
       box-sizing:border-box;
       border-radius:10px;
     }
@@ -174,7 +172,8 @@
         '牛肉炒饭','炒河粉','酸菜鱼','烤鸡翅','凉皮','饺子','馄饨','披萨','汉堡','寿司','石锅拌饭','沙拉',
         '火锅','烧烤','麻辣烫','冒菜','烤鱼','烤肉拌饭','炸酱面','热干面','担担面','肠粉','煲仔饭','螺蛳粉'
       ];
-      const palette = ['#93c5fd','#60a5fa','#3b82f6','#2563eb','#1d4ed8','#38bdf8','#22d3ee','#a5b4fc']; // 蓝白主题
+  // 只保留单一蓝色层级
+  const palette = ['#3b82f6']; // 统一蓝色
 
       const REPEAT = 30;       // 为实现"无限"滚动的重复倍数
       let stepH = 60;          // 实际步进高度（相邻两项 top 差）
@@ -244,6 +243,8 @@
             const el = document.createElement('div');
             el.className = 'hs-item';
             el.textContent = items[i];
+            // 只用统一蓝色背景
+            el.style.background = 'linear-gradient(180deg,#3b82f6 0%, #1e40af 100%)';
             reel.appendChild(el);
           }
         }
