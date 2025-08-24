@@ -23,6 +23,8 @@
       color:var(--text);
       /* 柔和蓝白背景 */
       background: radial-gradient(1000px 600px at 10% 10%, #ffffff 0%, var(--bg2) 40%, var(--bg1) 80%) fixed;
+      /* 兜底：禁止横向滚动，避免任何元素在极端情况下触发横向滚动条 */
+      overflow-x: hidden;
     }
     .app-wrap{max-width:960px;margin:0 auto;padding:24px;}
     .card{
@@ -43,9 +45,17 @@
     /* 视窗外框：冷色金属蓝 + 细腻内发光 */
     .hs-area{display:flex;flex-direction:column;align-items:center;gap:14px;}
     .hs-viewport{
-      position:relative;width:min(480px,92vw);height:260px;margin-top:6px;overflow:hidden;border-radius:14px;
-      background:linear-gradient(180deg,#ffffff 0%, #f1f5f9 100%);
-      border:6px solid #1e3a8a; /* indigo-800 */
+      position:relative;
+      /* 内容区宽度受限于视口，同时把 border 包含进宽度，避免边框导致溢出 */
+      width: min(480px, 92vw);
+      max-width: 100%;
+      box-sizing: border-box;
+      height: 260px;
+      margin-top: 6px;
+      overflow: hidden;
+      border-radius: 14px;
+      background: linear-gradient(180deg,#ffffff 0%, #f1f5f9 100%);
+      border: 6px solid #1e3a8a; /* indigo-800 */
       box-shadow:
         inset 0 0 0 2px rgba(147,197,253,.35), /* 内蓝色描边 */
         0 10px 24px rgba(2,6,23,.18);         /* 外投影 */
@@ -55,7 +65,10 @@
 
     /* 条目：蓝色渐变面板 */
     .hs-item{
-      height:44px;margin:6px 16px;border-radius:8px;color:#fff;display:flex;align-items:center;justify-content:center;
+      height:44px;
+      /* 缩小左右外边距，避免在窄屏时触发水平溢出；保留上下间距 */
+      margin:6px 8px;
+      border-radius:8px;color:#fff;display:flex;align-items:center;justify-content:center;
       font-weight:800;letter-spacing:.5px; line-height:44px; /* 确保文字垂直居中 */
       background:linear-gradient(180deg,#3b82f6 0%, #1e40af 100%); /* 蓝渐变 */
       border-top:2px solid rgba(255,255,255,.35);
@@ -116,8 +129,8 @@
     .btn:disabled{opacity:.6; cursor:not-allowed; filter:saturate(.6);}
     .note{color:var(--muted); font-size:12px;}
     /* 只显示一个选项：将视窗高度限制为一条条目，隐藏上下渐隐 */
-    .hs-viewport{ height:60px; }       /* 先给接近真实行高的初值，JS 会再精确覆盖 */
-    .hs-highlight{ height:48px; }      /* 条目本体为 44 + 上下边框 2+2 = 48，居中更准确 */
+    .hs-viewport{ box-sizing: border-box; height:60px; }       /* 先给接近真实行高的初值，JS 会再精确覆盖 */
+    .hs-highlight{ height:48px; }      /* 条目本体为 44 + 上边框 2 + 下边框 2 = 48，居中更准确 */
     .hs-gradient.top, .hs-gradient.bottom{ display:none; }
   </style>
 </head>
@@ -197,23 +210,31 @@
       function measureHeights() {
         const first = reel.children[0];
         const second = reel.children[1];
-        if (first) {
-          itemBoxH = first.offsetHeight+10; // 48（44 内容 + 上下边框 2+2）
-          if (second) {
-            // 使用真实测量值，不取整，避免 0.5px 误差
-            const r0 = first.getBoundingClientRect();
-            const r1 = second.getBoundingClientRect();
-            stepH = (r1.top - r0.top);
-          } else {
-            stepH = itemBoxH;
-          }
-          // 视窗显示"一步"的完整高度；高亮条外部高度与视窗一致（因 border-box 不会溢出）
-          viewport.style.height = stepH + 'px';
-          highlight.style.height = stepH + 'px';
+        if (!first) return;
 
-          // 居中偏移 = (视窗 - 条目本体)/2，保证红色条几何中心与高亮中心一致
-          centerOffset = (stepH - itemBoxH) / 2;
+        // 元素本体高度（不含 margin）——使用 getBoundingClientRect 获取真实渲染高度
+        const r0 = first.getBoundingClientRect();
+        itemBoxH = r0.height+10;
+
+        if (second) {
+          const r1 = second.getBoundingClientRect();
+          // 相邻两项的 top 差包含了 offsetHeight + 垂直 margin
+          stepH = r1.top - r0.top;
+        } else {
+          // 如果只有一项，回退到从 computed style 读取上下 margin 计算步进
+          const cs = getComputedStyle(first);
+          const mt = parseFloat(cs.marginTop) || 0;
+          const mb = parseFloat(cs.marginBottom) || 0;
+          stepH = itemBoxH + mt + mb;
         }
+
+        // 视窗显示"一步"的完整高度（包含 item 与其上下 margin）
+        viewport.style.height = stepH + 'px';
+        // 高亮条应包裹实际条目本体，垂直居中显示
+        highlight.style.height = itemBoxH + 'px';
+
+        // 居中偏移 = (视窗高度 - 条目本体高度)/2，保证视觉上条目在高亮中心
+        centerOffset = (viewport.clientHeight - itemBoxH) / 2;
       }
 
       function buildReel() {
